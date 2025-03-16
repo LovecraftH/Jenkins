@@ -18,7 +18,6 @@ public class JenkinsTest {
 
     }
 
-
     @Test
     @Tag("UI")
     public void twoFalse() {
