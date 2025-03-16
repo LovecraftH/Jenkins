@@ -16,24 +16,24 @@ dependencies {
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
     testImplementation 'io.rest-assured:rest-assured:4.4.0'
     testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
-    testImplementation 'com.codeborne:selenide:7.6.0'
 
     implementation 'io.qameta.allure:allure-rest-assured:2.12.1'
     implementation 'io.qameta.allure:allure-junit5:2.12.1'
 }
 
-//def apiTest = tasks.register("apiTests", Test) {
-//    useJUnitPlatform {
-//        includeTags "API"
-//    }
-//}
-//
-//def uiTest = tasks.register("uiTests", Test) {
-//    useJUnitPlatform {
-//        includeTags "UI"
-//    }
-//}
+def apiTest = tasks.register("api", Test) {
+    useJUnitPlatform {
+        includeTags "API"
+    }
+}
+
+def uiTest = tasks.register("ui", Test) {
+    useJUnitPlatform {
+        includeTags "UI"
+    }
+}
 
 test {
     useJUnitPlatform()
+    systemProperty "allure.results.directory", "build/allure-results"
 }
