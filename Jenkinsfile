@@ -10,10 +10,6 @@ pipeline {
         )
     }
 
-    tools {
-        gradle 'Gradle 7.5.1'  // Убедись, что у тебя добавлен Gradle в Jenkins (Manage Jenkins → Global Tool Configuration)
-    }
-
     environment {
         ENV = "qa"
     }
