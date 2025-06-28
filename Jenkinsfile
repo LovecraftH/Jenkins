@@ -5,7 +5,8 @@ pipeline {
     parameters {
         string(
                 name: 'THREADS',
-                defaultValue: '6',
+                choices: [2, 4, 6, 8],
+                defaultValue: 6,
                 description: 'Количество потоков для параллельного запуска JUnit 5 тестов'
         )
 
