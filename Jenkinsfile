@@ -1,7 +1,7 @@
 pipeline {
     agent any  // Запускаем pipeline на любом доступном агенте
 
-    // Параметр, который можно ввести в UI Jenkins перед запуском
+    // Параметр, доступный через UI
     parameters {
         string(
                 name: 'THREADS',
@@ -11,51 +11,50 @@ pipeline {
     }
 
     tools {
-        maven 'Maven 3.8.1'  // Используем предустановленный Maven
+        gradle 'Gradle 7.5.1'  // Убедись, что у тебя добавлен Gradle в Jenkins (Manage Jenkins → Global Tool Configuration)
     }
 
     environment {
-        ENV = "qa"  // Пример переменной окружения, можно использовать в логике
+        ENV = "qa"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Загружаем проект из Git-репозитория
+                // Клонируем проект из Git
                 git branch: 'main', url: 'https://github.com/your/project.git'
             }
         }
 
         stage('Test') {
             steps {
-                // Получаем значение параметра THREADS или берём 6 по умолчанию
                 script {
                     def threads = params.THREADS?.trim() ? params.THREADS : "6"
 
-                    // Запускаем тесты, передаём только нужное число потоков
+                    // Запускаем Gradle тесты с параметром JUnit
                     sh """
-            mvn clean test \
-            -Djunit.jupiter.execution.parallel.config.fixed.parallelism=${threads}
-          """
+                      ./gradlew clean test \
+                      -Djunit.jupiter.execution.parallel.config.fixed.parallelism=${threads}
+                    """
                 }
             }
         }
 
         stage('Allure Report') {
             steps {
-                // Подключаем генерацию Allure-отчёта
-                allure includeProperties: false, jdk: '', results: [[path: 'target/allure-results']]
+                // Генерация Allure отчёта (предположим, плагин установлен)
+                allure includeProperties: false, jdk: '', results: [[path: 'build/allure-results']]
             }
         }
     }
 
     post {
         always {
-            // Всегда (при успехе или падении) — добавляем JUnit-отчёты
-            junit 'target/surefire-reports/*.xml'
+            // Подключаем JUnit-отчёты Gradle (они по умолчанию в build/test-results/test)
+            junit 'build/test-results/test/*.xml'
 
-            // Сохраняем лог-файлы и другие артефакты
-            archiveArtifacts artifacts: 'target/**/*.log', fingerprint: true
+            // Сохраняем артефакты (логи и пр.)
+            archiveArtifacts artifacts: 'build/**/*.log', fingerprint: true
         }
     }
 }
