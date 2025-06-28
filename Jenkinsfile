@@ -3,9 +3,10 @@ pipeline {
 
     // === Параметры, которые можно задавать через UI при запуске сборки ===
     parameters {
-        intParam(
+        choice(
                 name: 'THREADS',
-                choices: [2, 4, 6, 8],
+                choices: ['2', '4', '6', '8'],
+                defaultValue: '6',
                 description: 'Количество потоков для параллельного запуска JUnit 5 тестов'
         )
 
@@ -98,7 +99,7 @@ pipeline {
             steps {
                 script {
                     // Получаем количество потоков из параметра, если не задано — используем 6
-                    def threads = params.THREADS?.trim() ? params.THREADS : 6
+                    def threads = params.THREADS?.trim() ? params.THREADS : '6'
 
                     // Даем права на выполнение gradlew (важно для Linux/Unix)
                     sh 'chmod +x ./gradlew'
