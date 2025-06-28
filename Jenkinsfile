@@ -45,11 +45,6 @@ pipeline {
         )
 
         // Дополнительные JVM параметры
-        string(
-                name: 'JVM_OPTS',
-                defaultValue: '-Xmx2g -Xms1g',
-                description: 'Дополнительные JVM параметры'
-        )
 
         // Выбор тег для запуска конкретных тестов
         string(
@@ -77,7 +72,6 @@ pipeline {
                     echo "Браузер: ${params.BROWSER}"
                     echo "Количество потоков: ${params.THREADS}"
                     echo "Пропустить тесты: ${params.SKIP_TESTS}"
-                    echo "JVM параметры: ${params.JVM_OPTS}"
                     echo "Теги тестов: ${params.TEST_TAGS}"
                     echo "Заметки: ${params.RELEASE_NOTES}"
 
@@ -109,8 +103,7 @@ pipeline {
                         -Djunit.threads=${threads} \\
                         -Dtest.environment=${params.ENVIRONMENT} \\
                         -Dbrowser=${params.BROWSER} \\
-                        -Dtest.tags=${params.TEST_TAGS} \\
-                        ${params.JVM_OPTS}
+                        -Dtest.tags=${params.TEST_TAGS}
                     """
                 }
             }
