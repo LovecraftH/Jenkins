@@ -3,7 +3,7 @@ pipeline {
 
     // === Параметры, которые можно задавать через UI при запуске сборки ===
     parameters {
-        string(
+        intParam(
                 name: 'THREADS',
                 choices: [2, 4, 6, 8],
                 defaultValue: 6,
