@@ -45,5 +45,13 @@ pipeline {
                 allure includeProperties: false, jdk: '', results: [[path: 'build/allure-results']]
             }
         }
+
+        post {
+            always {
+                // JUnit XML-отчёты
+                junit 'build/test-results/test/*.xml'
+            }
+        }
+
     }
 }
