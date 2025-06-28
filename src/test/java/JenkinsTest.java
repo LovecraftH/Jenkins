@@ -31,7 +31,7 @@ public class JenkinsTest {
     public void threeTrue() {
         logger.info("test number 3 API");
         System.out.println("SYSTEM test number 3 API");
-        Assertions.assertTrue(true);
+        Assertions.assertTrue(false);
     }
 
 
