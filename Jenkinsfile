@@ -33,7 +33,7 @@ pipeline {
                     // Запускаем Gradle тесты с параметром JUnit
                     sh """
                       ./gradlew clean test \
-                      -Djunit.jupiter.execution.parallel.config.fixed.parallelism=${threads}
+                 
                     """
                 }
             }
