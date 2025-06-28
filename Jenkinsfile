@@ -46,9 +46,6 @@ pipeline {
 
     post {
         always {
-            // Подключаем JUnit-отчёты Gradle (они по умолчанию в build/test-results/test)
-            junit 'build/test-results/test/*.xml'
-
             // Сохраняем артефакты (логи и пр.)
             archiveArtifacts artifacts: 'build/**/*.log', fingerprint: true
         }
