@@ -1,7 +1,6 @@
 pipeline {
-    agent any  // Запускаем pipeline на любом доступном агенте
+    agent any
 
-    // Параметр, доступный через UI
     parameters {
         string(
                 name: 'THREADS',
@@ -17,7 +16,6 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Клонируем проект из Git
                 git branch: 'master', url: 'https://github.com/LovecraftH/Jenkins.git'
             }
         }
@@ -26,32 +24,23 @@ pipeline {
             steps {
                 script {
                     def threads = params.THREADS?.trim() ? params.THREADS : "6"
-
-                    //  Даем права на выполнение gradlew
                     sh 'chmod +x ./gradlew'
-
-                    // Запускаем Gradle тесты с параметром JUnit
                     sh """
-                      ./gradlew clean test \
-                 
+                      ./gradlew clean test
                     """
                 }
             }
         }
+    }
 
-        stage('Allure Report') {
-            steps {
-                // Генерация Allure отчёта (предположим, плагин установлен)
-                allure includeProperties: false, jdk: '', results: [[path: 'build/allure-results']]
-            }
+    post {
+        always {
+            // Генерация Allure отчёта всегда выполнится
+            allure includeProperties: false, jdk: '', results: [[path: 'build/allure-results']]
         }
-
-        post {
-            always {
-                // JUnit XML-отчёты
-                junit 'build/test-results/test/*.xml'
-            }
+        failure {
+            // Дополнительные действия при падении pipeline
+            echo 'Pipeline failed - но Allure отчёт всё равно сгенерирован'
         }
-
     }
 }
