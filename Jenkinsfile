@@ -99,7 +99,7 @@ pipeline {
             steps {
                 script {
                     // Получаем количество потоков из параметра, если не задано — используем 6
-                    def threads = params.THREADS?.trim() ? params.THREADS : "6"
+                    def threads = params.THREADS?.trim() ? params.THREADS : 6
 
                     // Даем права на выполнение gradlew (важно для Linux/Unix)
                     sh 'chmod +x ./gradlew'
