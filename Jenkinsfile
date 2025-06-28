@@ -22,7 +22,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Клонируем проект из Git
-                git branch: 'main', url: 'https://github.com/your/project.git'
+                git branch: 'master', url: 'https://github.com/LovecraftH/Jenkins.git'
             }
         }
 
