@@ -43,11 +43,4 @@ pipeline {
             }
         }
     }
-
-    post {
-        always {
-            // Сохраняем артефакты (логи и пр.)
-            archiveArtifacts artifacts: 'build/**/*.log', fingerprint: true
-        }
-    }
 }
