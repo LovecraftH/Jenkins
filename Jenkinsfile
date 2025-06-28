@@ -8,36 +8,50 @@ pipeline {
                 defaultValue: '6',
                 description: 'Количество потоков для параллельного запуска JUnit 5 тестов'
         )
+
+        // Выбор окружения
         choice(
                 name: 'ENVIRONMENT',
                 choices: ['dev', 'test', 'stage', 'prod'],
                 description: 'Выберите окружение для запуска тестов'
         )
+
+        // Выбор браузера для тестов
         choice(
                 name: 'BROWSER',
                 choices: ['chrome', 'firefox', 'edge', 'safari'],
                 description: 'Выберите браузер для UI тестов'
         )
+
+        // Логический параметр
         booleanParam(
                 name: 'SKIP_TESTS',
                 defaultValue: false,
                 description: 'Пропустить выполнение тестов'
         )
+
+        // Логический параметр для отчетности
         booleanParam(
                 name: 'GENERATE_REPORT',
                 defaultValue: true,
                 description: 'Генерировать Allure отчет'
         )
+
+        // Многострочный текст для заметок
         text(
                 name: 'RELEASE_NOTES',
                 defaultValue: 'Автоматический запуск тестов',
                 description: 'Описание изменений или заметки к релизу'
         )
+
+        // Дополнительные JVM параметры
         string(
                 name: 'JVM_OPTS',
                 defaultValue: '-Xmx2g -Xms1g',
                 description: 'Дополнительные JVM параметры'
         )
+
+        // Выбор тег для запуска конкретных тестов
         string(
                 name: 'TEST_TAGS',
                 defaultValue: 'smoke',
