@@ -22,6 +22,7 @@ public class JenkinsTest {
     public void twoFalse() {
         logger.info("Test number 2 UI");
         System.out.println("SYSTEM test number 2 UI");
+        System.out.println("TEST 2 TRUE!!!");
         Assertions.assertTrue(true);
     }
 
