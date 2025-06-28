@@ -27,6 +27,9 @@ pipeline {
                 script {
                     def threads = params.THREADS?.trim() ? params.THREADS : "6"
 
+                    //  Даем права на выполнение gradlew
+                    sh 'chmod +x ./gradlew'
+
                     // Запускаем Gradle тесты с параметром JUnit
                     sh """
                       ./gradlew clean test \
