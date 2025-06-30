@@ -11,7 +11,7 @@ public class JenkinsTest {
     @Test
     @Tag("UI")
     public void first() {
-        logger.info("test number 1 UI");
+        logger.info("test number 1 UI     ARTEM");
         System.out.println("SYSTEM test number 1 UI");
         Assertions.assertTrue(true);
 
