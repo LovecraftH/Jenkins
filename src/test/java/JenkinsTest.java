@@ -14,7 +14,6 @@ public class JenkinsTest {
         logger.info("test number 1 UI ARTEM");
         System.out.println("SYSTEM test number 1 UI");
         Assertions.assertTrue(true);
-
     }
 
     @Test
@@ -29,7 +28,7 @@ public class JenkinsTest {
     @Test
     @Tag("API")
     public void threeTrue() {
-        logger.info("test number 3 API VOLODYA");
+        logger.info("test number 3 API VOVA");
         System.out.println("SYSTEM test number 3 API");
         Assertions.assertTrue(false);
     }
