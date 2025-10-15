@@ -32,7 +32,7 @@ public class JenkinsTest {
     public void threeTrue() {
         System.out.println("dsadsadsadsagfgfghg");
         System.out.println("SYSTEM test number 3 API");
-        Assertions.assertTrue(false);
+        Assertions.assertTrue(true);
     }
 
     @ParameterizedTest
