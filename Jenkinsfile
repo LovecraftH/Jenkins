@@ -1,132 +1,304 @@
 pipeline {
-    agent any // Использовать любой доступный агент Jenkins для выполнения pipeline
+    agent any
 
-    // === Параметры, которые можно задавать через UI при запуске сборки ===
     parameters {
+        choice(
+                name: 'TEST_SUITE',
+                choices: ['sequential', 'api', 'ui', 'all'],
+                description: 'Какие тесты запустить: sequential (API→UI с условием), api, ui, или all'
+        )
+
         choice(
                 name: 'THREADS',
                 choices: ['2', '4', '6', '8'],
-                description: 'Количество потоков для параллельного запуска JUnit 5 тестов'
+                description: 'Количество потоков для параллельного запуска тестов'
         )
 
-        // Выбор окружения
         choice(
                 name: 'ENVIRONMENT',
                 choices: ['dev', 'test', 'stage', 'prod'],
                 description: 'Выберите окружение для запуска тестов'
         )
 
-        // Выбор браузера для тестов
         choice(
                 name: 'BROWSER',
                 choices: ['chrome', 'firefox', 'edge', 'safari'],
                 description: 'Выберите браузер для UI тестов'
         )
 
-        // Логический параметр
+        string(
+                name: 'MIN_API_PASS_RATE',
+                defaultValue: '80',
+                description: 'Минимальный % прохождения API тестов для запуска UI (только для sequential)'
+        )
+
         booleanParam(
                 name: 'SKIP_TESTS',
                 defaultValue: false,
                 description: 'Пропустить выполнение тестов'
         )
 
-        // Логический параметр для отчетности
         booleanParam(
                 name: 'GENERATE_REPORT',
                 defaultValue: true,
                 description: 'Генерировать Allure отчет'
         )
 
-        // Многострочный текст для заметок
         text(
                 name: 'RELEASE_NOTES',
                 defaultValue: 'Автоматический запуск тестов',
                 description: 'Описание изменений или заметки к релизу'
         )
-
-        // Дополнительные JVM параметры
-
-        // Выбор тег для запуска конкретных тестов
-        string(
-                name: 'TEST_TAGS',
-                defaultValue: 'smoke',
-                description: 'Теги для запуска конкретной группы тестов'
-        )
     }
 
-    // === Глобальные переменные окружения, доступные во всех этапах ===
     environment {
-        ENV = "${params.ENVIRONMENT}"            // Окружение для тестов (dev/test/stage/prod)
-        BROWSER_TYPE = "${params.BROWSER}"       // Браузер для тестов
-        TEST_ENVIRONMENT = "${params.ENVIRONMENT}" // Дублируется для примера использования переменных
+        ENV = "${params.ENVIRONMENT}"
+        BROWSER_TYPE = "${params.BROWSER}"
+        TEST_ENVIRONMENT = "${params.ENVIRONMENT}"
     }
 
     stages {
-        // === Этап 1: Настройка окружения и вывод всех параметров сборки ===
         stage('Environment Setup') {
             steps {
                 script {
-                    // Выводим все параметры, с которыми будет запускаться сборка
                     echo "=== Настройки сборки ==="
+                    echo "Тест-сьют: ${params.TEST_SUITE}"
                     echo "Окружение: ${params.ENVIRONMENT}"
                     echo "Браузер: ${params.BROWSER}"
                     echo "Количество потоков: ${params.THREADS}"
-                    echo "Пропустить тесты: ${params.SKIP_TESTS}"
-                    echo "Теги тестов: ${params.TEST_TAGS}"
+                    echo "Минимальный API pass rate: ${params.MIN_API_PASS_RATE}%"
                     echo "Заметки: ${params.RELEASE_NOTES}"
 
-                    // Устанавливаем читаемое имя и описание для текущей сборки в Jenkins UI
-                    currentBuild.displayName = "#${BUILD_NUMBER}-${params.ENVIRONMENT}-${params.BROWSER}"
-                    currentBuild.description = "Env: ${params.ENVIRONMENT}, Browser: ${params.BROWSER}, Notes: ${params.RELEASE_NOTES}"
+                    currentBuild.displayName = "#${BUILD_NUMBER}-${params.TEST_SUITE}-${params.ENVIRONMENT}"
+                    currentBuild.description = "Suite: ${params.TEST_SUITE}, Env: ${params.ENVIRONMENT}, Browser: ${params.BROWSER}"
                 }
             }
         }
 
-        // === Этап 2: Запуск тестов (если не выбран пропуск) ===
-        stage('Test') {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('API Tests') {
             when {
-                expression {
-                    return !params.SKIP_TESTS // Выполнять только если не выбран пропуск тестов
+                allOf {
+                    expression { !params.SKIP_TESTS }
+                    expression {
+                        params.TEST_SUITE == 'api' ||
+                                params.TEST_SUITE == 'sequential' ||
+                                params.TEST_SUITE == 'all'
+                    }
                 }
             }
             steps {
                 script {
-                    // Получаем количество потоков из параметра, если не задано — используем 6
-                    def threads = params.THREADS?.trim() ? params.THREADS : "6"
+                    echo "🚀 Запуск API тестов..."
 
-                    // Даем права на выполнение gradlew (важно для Linux/Unix)
                     sh 'chmod +x ./gradlew'
 
-                    // Запускаем тесты с передачей всех параметров из UI в виде системных свойств
+                    // Очищаем предыдущие результаты
+                    sh './gradlew clean'
+
+                    // Запускаем API тесты
+                    def apiTestResult = sh(
+                            script: """
+                            ./gradlew apiTest \\
+                            -Djunit.threads=${params.THREADS} \\
+                            -Dtest.environment=${params.ENVIRONMENT} \\
+                            -Dbrowser=${params.BROWSER} \\
+                            --no-daemon \\
+                            --console=plain
+                        """,
+                            returnStatus: true
+                    )
+
+                    // Сохраняем статус для следующих стадий
+                    env.API_TEST_STATUS = apiTestResult.toString()
+
+                    if (apiTestResult != 0) {
+                        echo "⚠️  API тесты завершились с ошибками (код: ${apiTestResult})"
+                        // Не прерываем pipeline, продолжаем
+                    } else {
+                        echo "✅ API тесты прошли успешно"
+                    }
+                }
+            }
+            post {
+                always {
+                    // Публикуем JUnit результаты API тестов
+                    junit testResults: '**/build/test-results/apiTest/*.xml',
+                            allowEmptyResults: true
+                }
+            }
+        }
+
+        stage('Evaluate API Results') {
+            when {
+                allOf {
+                    expression { !params.SKIP_TESTS }
+                    expression { params.TEST_SUITE == 'sequential' }
+                    expression { currentBuild.currentResult != 'ABORTED' }
+                }
+            }
+            steps {
+                script {
+                    echo "📊 Анализ результатов API тестов..."
+
+                    def testResultAction = currentBuild.rawBuild.getAction(
+                            hudson.tasks.junit.TestResultAction.class
+                    )
+
+                    if (testResultAction != null) {
+                        def totalTests = testResultAction.totalCount
+                        def failedTests = testResultAction.failCount
+                        def passedTests = totalTests - failedTests
+                        def passRate = totalTests > 0 ? (passedTests / totalTests) * 100 : 0
+
+                        echo """
+=== Результаты API тестов ===
+Всего тестов: ${totalTests}
+Прошло: ${passedTests}
+Упало: ${failedTests}
+Success Rate: ${String.format('%.2f', passRate)}%
+Минимальный порог: ${params.MIN_API_PASS_RATE}%
+                        """
+
+                        env.API_PASS_RATE = String.format('%.2f', passRate)
+                        env.API_TOTAL_TESTS = totalTests.toString()
+                        env.API_PASSED_TESTS = passedTests.toString()
+
+                        def minPassRate = params.MIN_API_PASS_RATE.toDouble()
+                        env.RUN_UI_TESTS = (passRate >= minPassRate) ? 'true' : 'false'
+
+                        if (passRate >= minPassRate) {
+                            echo "✅ Success rate (${String.format('%.2f', passRate)}%) >= ${minPassRate}%, UI тесты будут запущены"
+                        } else {
+                            echo "❌ Success rate (${String.format('%.2f', passRate)}%) < ${minPassRate}%, UI тесты будут пропущены"
+                        }
+                    } else {
+                        echo "⚠️  Результаты тестов не найдены, UI тесты будут запущены"
+                        env.RUN_UI_TESTS = 'true'
+                    }
+                }
+            }
+        }
+
+        stage('UI Tests') {
+            when {
+                allOf {
+                    expression { !params.SKIP_TESTS }
+                    anyOf {
+                        expression { params.TEST_SUITE == 'ui' }
+                        expression { params.TEST_SUITE == 'all' }
+                        expression {
+                            params.TEST_SUITE == 'sequential' && env.RUN_UI_TESTS == 'true'
+                        }
+                    }
+                }
+            }
+            steps {
+                script {
+                    echo "🚀 Запуск UI тестов..."
+
+                    // НЕ очищаем build/allure-results - там лежат результаты API тестов!
+                    def uiTestResult = sh(
+                            script: """
+                            ./gradlew uiTest \\
+                            -Djunit.threads=${params.THREADS} \\
+                            -Dtest.environment=${params.ENVIRONMENT} \\
+                            -Dbrowser=${params.BROWSER} \\
+                            --no-daemon \\
+                            --console=plain
+                        """,
+                            returnStatus: true
+                    )
+
+                    env.UI_TEST_STATUS = uiTestResult.toString()
+
+                    if (uiTestResult != 0) {
+                        echo "⚠️  UI тесты завершились с ошибками (код: ${uiTestResult})"
+                    } else {
+                        echo "✅ UI тесты прошли успешно"
+                    }
+                }
+            }
+            post {
+                always {
+                    // Публикуем JUnit результаты UI тестов
+                    junit testResults: '**/build/test-results/uiTest/*.xml',
+                            allowEmptyResults: true
+                }
+            }
+        }
+
+        stage('Run All Tests') {
+            when {
+                allOf {
+                    expression { !params.SKIP_TESTS }
+                    expression { params.TEST_SUITE == 'all' }
+                }
+            }
+            steps {
+                script {
+                    echo "🚀 Запуск всех тестов (API + UI параллельно)..."
+
+                    sh 'chmod +x ./gradlew'
+                    sh './gradlew clean'
+
                     sh """
-                        ./gradlew clean test \\
-                        -Djunit.threads=${threads} \\
+                        ./gradlew test \\
+                        -Djunit.threads=${params.THREADS} \\
                         -Dtest.environment=${params.ENVIRONMENT} \\
                         -Dbrowser=${params.BROWSER} \\
-                        -Dtest.tags=${params.TEST_TAGS}
+                        --no-daemon \\
+                        --console=plain
+                    """
+                }
+            }
+            post {
+                always {
+                    junit testResults: '**/build/test-results/test/*.xml',
+                            allowEmptyResults: true
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                // Генерируем единый Allure отчёт из всех результатов
+                if (params.GENERATE_REPORT) {
+                    echo "📊 Генерация Allure отчёта..."
+
+                    allure includeProperties: false,
+                            jdk: '',
+                            results: [[path: 'build/allure-results']]
+                }
+
+                // Выводим итоговую статистику
+                if (params.TEST_SUITE == 'sequential') {
+                    echo """
+=== ИТОГОВАЯ СТАТИСТИКА ===
+API тесты: ${env.API_TOTAL_TESTS ?: 'N/A'} (прошло: ${env.API_PASSED_TESTS ?: 'N/A'}, success rate: ${env.API_PASS_RATE ?: 'N/A'}%)
+UI тесты: ${env.RUN_UI_TESTS == 'true' ? 'Запущены' : 'Пропущены'}
                     """
                 }
             }
         }
-    }
 
-    // === Пост-условия: выполняются после всех этапов, независимо от результата ===
-    post {
-        always {
-            script {
-                // Генерируем Allure-отчет, если выбран соответствующий параметр
-                if (params.GENERATE_REPORT) {
-                    allure includeProperties: false, jdk: '', results: [[path: 'build/allure-results']]
-                }
-            }
-        }
         success {
-            // Выводим сообщение об успешном завершении сборки
             echo "✅ Сборка завершена успешно для окружения: ${params.ENVIRONMENT}"
         }
+
         failure {
-            // Выводим сообщение о неудачной сборке
             echo "❌ Сборка завершилась с ошибкой для окружения: ${params.ENVIRONMENT}"
+        }
+
+        unstable {
+            echo "⚠️  Сборка нестабильна (есть упавшие тесты)"
         }
     }
 }

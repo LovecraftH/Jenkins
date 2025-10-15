@@ -1,6 +1,8 @@
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +33,15 @@ public class JenkinsTest {
         System.out.println("dsadsadsadsagfgfghg");
         System.out.println("SYSTEM test number 3 API");
         Assertions.assertTrue(false);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"madam", "racecar", "level", "radar", "hello"})
+    public void isPallindrom(String value) {
+
+        System.out.println(value + " is pallindrom? ");
+
+
     }
 
 }
