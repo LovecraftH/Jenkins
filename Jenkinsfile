@@ -2,53 +2,37 @@ pipeline {
     agent any
 
     parameters {
-        choice(
-                name: 'TEST_SUITE',
+        choice(name: 'TEST_SUITE',
                 choices: ['sequential', 'api', 'ui', 'all'],
-                description: 'Какие тесты запустить: sequential (API→UI с условием), api, ui, или all'
-        )
+                description: 'Какие тесты запустить: sequential (API→UI с условием), api, ui, или all')
 
-        choice(
-                name: 'THREADS',
+        choice(name: 'THREADS',
                 choices: ['2', '4', '6', '8'],
-                description: 'Количество потоков для параллельного запуска тестов'
-        )
+                description: 'Количество потоков для параллельного запуска тестов')
 
-        choice(
-                name: 'ENVIRONMENT',
+        choice(name: 'ENVIRONMENT',
                 choices: ['dev', 'test', 'stage', 'prod'],
-                description: 'Выберите окружение для запуска тестов'
-        )
+                description: 'Выберите окружение для запуска тестов')
 
-        choice(
-                name: 'BROWSER',
+        choice(name: 'BROWSER',
                 choices: ['chrome', 'firefox', 'edge', 'safari'],
-                description: 'Выберите браузер для UI тестов'
-        )
+                description: 'Выберите браузер для UI тестов')
 
-        string(
-                name: 'MIN_API_PASS_RATE',
+        string(name: 'MIN_API_PASS_RATE',
                 defaultValue: '80',
-                description: 'Минимальный % прохождения API тестов для запуска UI (только для sequential)'
-        )
+                description: 'Минимальный % прохождения API тестов для запуска UI (только для sequential)')
 
-        booleanParam(
-                name: 'SKIP_TESTS',
+        booleanParam(name: 'SKIP_TESTS',
                 defaultValue: false,
-                description: 'Пропустить выполнение тестов'
-        )
+                description: 'Пропустить выполнение тестов')
 
-        booleanParam(
-                name: 'GENERATE_REPORT',
+        booleanParam(name: 'GENERATE_REPORT',
                 defaultValue: true,
-                description: 'Генерировать Allure отчет'
-        )
+                description: 'Генерировать Allure отчет')
 
-        text(
-                name: 'RELEASE_NOTES',
+        text(name: 'RELEASE_NOTES',
                 defaultValue: 'Автоматический запуск тестов',
-                description: 'Описание изменений или заметки к релизу'
-        )
+                description: 'Описание изменений или заметки к релизу')
     }
 
     environment {
@@ -86,9 +70,7 @@ pipeline {
                 allOf {
                     expression { !params.SKIP_TESTS }
                     expression {
-                        params.TEST_SUITE == 'api' ||
-                                params.TEST_SUITE == 'sequential' ||
-                                params.TEST_SUITE == 'all'
+                        params.TEST_SUITE == 'api' || params.TEST_SUITE == 'sequential' || params.TEST_SUITE == 'all'
                     }
                 }
             }
@@ -102,8 +84,7 @@ pipeline {
                     sh './gradlew clean'
 
                     // Запускаем API тесты
-                    def apiTestResult = sh(
-                            script: """
+                    def apiTestResult = sh(script: """
                             ./gradlew apiTest \\
                             -Djunit.threads=${params.THREADS} \\
                             -Dtest.environment=${params.ENVIRONMENT} \\
@@ -111,8 +92,7 @@ pipeline {
                             --no-daemon \\
                             --console=plain
                         """,
-                            returnStatus: true
-                    )
+                            returnStatus: true)
 
                     // Сохраняем статус для следующих стадий
                     env.API_TEST_STATUS = apiTestResult.toString()
@@ -134,56 +114,53 @@ pipeline {
             }
         }
 
-        stage('Evaluate API Results') {
-            when {
-                allOf {
-                    expression { !params.SKIP_TESTS }
-                    expression { params.TEST_SUITE == 'sequential' }
-                    expression { currentBuild.currentResult != 'ABORTED' }
-                }
-            }
-            steps {
-                script {
-                    echo "📊 Анализ результатов API тестов..."
-
-                    def testResultAction = currentBuild.rawBuild.getAction(
-                            hudson.tasks.junit.TestResultAction.class
-                    )
-
-                    if (testResultAction != null) {
-                        def totalTests = testResultAction.totalCount
-                        def failedTests = testResultAction.failCount
-                        def passedTests = totalTests - failedTests
-                        def passRate = totalTests > 0 ? (passedTests / totalTests) * 100 : 0
-
-                        echo """
-=== Результаты API тестов ===
-Всего тестов: ${totalTests}
-Прошло: ${passedTests}
-Упало: ${failedTests}
-Success Rate: ${String.format('%.2f', passRate)}%
-Минимальный порог: ${params.MIN_API_PASS_RATE}%
-                        """
-
-                        env.API_PASS_RATE = String.format('%.2f', passRate)
-                        env.API_TOTAL_TESTS = totalTests.toString()
-                        env.API_PASSED_TESTS = passedTests.toString()
-
-                        def minPassRate = params.MIN_API_PASS_RATE.toDouble()
-                        env.RUN_UI_TESTS = (passRate >= minPassRate) ? 'true' : 'false'
-
-                        if (passRate >= minPassRate) {
-                            echo "✅ Success rate (${String.format('%.2f', passRate)}%) >= ${minPassRate}%, UI тесты будут запущены"
-                        } else {
-                            echo "❌ Success rate (${String.format('%.2f', passRate)}%) < ${minPassRate}%, UI тесты будут пропущены"
-                        }
-                    } else {
-                        echo "⚠️  Результаты тестов не найдены, UI тесты будут запущены"
-                        env.RUN_UI_TESTS = 'true'
-                    }
-                }
-            }
-        }
+//        stage('Evaluate API Results') {
+//            when {
+//                allOf {
+//                    expression { !params.SKIP_TESTS }
+//                    expression { params.TEST_SUITE == 'sequential' }
+//                    expression { currentBuild.currentResult != 'ABORTED' }
+//                }
+//            }
+//            steps {
+//                script {
+//                    echo "📊 Анализ результатов API тестов..."
+//
+//                    def testResultAction = currentBuild.rawBuild.getAction(hudson.tasks.junit.TestResultAction.class)
+//
+//                    if (testResultAction != null) {
+//                        def totalTests = testResultAction.totalCount
+//                        def failedTests = testResultAction.failCount
+//                        def passedTests = totalTests - failedTests
+//                        def passRate = totalTests > 0 ? (passedTests / totalTests) * 100 : 0
+//
+//                        echo """
+//=== Результаты API тестов ===
+//Всего тестов: ${totalTests}
+//Прошло: ${passedTests}
+//Упало: ${failedTests}
+//Success Rate: ${String.format('%.2f', passRate)}%
+//Минимальный порог: ${params.MIN_API_PASS_RATE}%
+//                        """
+//
+//                        env.API_PASS_RATE = String.format('%.2f', passRate)
+//                        env.API_TOTAL_TESTS = totalTests.toString()
+//                        env.API_PASSED_TESTS = passedTests.toString()
+//
+//                        def minPassRate = params.MIN_API_PASS_RATE.toDouble()
+//                        env.RUN_UI_TESTS = (passRate >= minPassRate) ? 'true' : 'false'
+//
+//                        if (passRate >= minPassRate) {
+//                            echo "✅ Success rate (${String.format('%.2f', passRate)}%) >= ${minPassRate}%, UI тесты будут запущены"
+//                        } else {
+//                            echo "❌ Success rate (${String.format('%.2f', passRate)}%) < ${minPassRate}%, UI тесты будут пропущены"
+//                        }
+//                    } else {
+//                        echo "⚠️  Результаты тестов не найдены, UI тесты будут запущены"
+//                        env.RUN_UI_TESTS = 'true'
+//                    }
+//                }
+//            }
 
         stage('UI Tests') {
             when {
@@ -203,8 +180,7 @@ Success Rate: ${String.format('%.2f', passRate)}%
                     echo "🚀 Запуск UI тестов..."
 
                     // НЕ очищаем build/allure-results - там лежат результаты API тестов!
-                    def uiTestResult = sh(
-                            script: """
+                    def uiTestResult = sh(script: """
                             ./gradlew uiTest \\
                             -Djunit.threads=${params.THREADS} \\
                             -Dtest.environment=${params.ENVIRONMENT} \\
@@ -212,8 +188,7 @@ Success Rate: ${String.format('%.2f', passRate)}%
                             --no-daemon \\
                             --console=plain
                         """,
-                            returnStatus: true
-                    )
+                            returnStatus: true)
 
                     env.UI_TEST_STATUS = uiTestResult.toString()
 
@@ -281,9 +256,9 @@ Success Rate: ${String.format('%.2f', passRate)}%
                 // Выводим итоговую статистику
                 if (params.TEST_SUITE == 'sequential') {
                     echo """
-=== ИТОГОВАЯ СТАТИСТИКА ===
-API тесты: ${env.API_TOTAL_TESTS ?: 'N/A'} (прошло: ${env.API_PASSED_TESTS ?: 'N/A'}, success rate: ${env.API_PASS_RATE ?: 'N/A'}%)
-UI тесты: ${env.RUN_UI_TESTS == 'true' ? 'Запущены' : 'Пропущены'}
+                === ИТОГОВАЯ СТАТИСТИКА ===
+                API тесты: ${env.API_TOTAL_TESTS ?: 'N/A'} (прошло: ${env.API_PASSED_TESTS ?: 'N/A'}, success rate: ${env.API_PASS_RATE ?: 'N/A'}%)
+                UI тесты: ${env.RUN_UI_TESTS == 'true' ? 'Запущены' : 'Пропущены'}
                     """
                 }
             }
